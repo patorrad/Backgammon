@@ -39,17 +39,28 @@ class BackgammonPlayer:
 
     def move(self, state, die1, die2):
         # self.initialize_move_gen_for_state(state, state.whose_move, die1, die2)
-        moves, scores = self.get_next_ply(state, die1, die2, 1) 
+        start_node = Node(state=state)
+        self.get_next_ply(die1, die2, 1, start_node) 
         # return self.get_first_move()
         # return self.get_last_move()
-        return self.move_randomly(state.whose_move)
+        # return self.move_randomly(state.whose_move)
+        return random.choice(moves)
 
-    def get_next_ply(self, state, die1, die2, ply):
-        if ply < self.maxPly:
-            return self.get_next_ply(state, die1, die2, ply + 1)
+    def get_last_ply(self, die1, die2, node):
+        self.initialize_move_gen_for_state(node.state, node.state.whose_move, die1, die2)
+        return self.get_all_moves(node.state.whose_move, node)
+
+    def get_next_ply(self, die1, die2, ply, node):
+        if ply >= self.maxPly:
+            ply += 1
+            return self.get_last_ply(die1, die2, node)
         else:
-            self.initialize_move_gen_for_state(state, state.whose_move, die1, die2)
-            return self.get_all_moves(state.whose_move)
+            self.initialize_move_gen_for_state(node.state, node.state.whose_move, die1, die2)
+            self.get_all_moves(node.state.whose_move, node)
+            ply += 1
+            for i in range(len(node.descendants)):
+                self.get_next_ply(die1, die2, ply, node.descendants[i])
+            # return moves, scores, states
 
     def get_first_move(self):
         """Uses the mover to generate only one move."""
@@ -70,10 +81,11 @@ class BackgammonPlayer:
             return "NO MOVES COULD BE FOUND"
         return moves[-1]
 
-    def get_all_moves(self, player):
+    def get_all_moves(self, player, node):
         """Uses the mover to generate all legal moves."""
         move_list = []
         move_score = []
+        move_state = []
         done_finding_moves = False
         any_non_pass_moves = False
         while not done_finding_moves:
@@ -85,13 +97,16 @@ class BackgammonPlayer:
                 
                 if m[0] != 'p':
                     any_non_pass_moves = True
-                    move_list.append(m[0])    # Add the move to the list.
-                    move_score.append(get_pip_count(m[1].pointLists, player))
+                    node.descendants.append(Node(m[0], get_pip_count(m[1].pointLists, player), m[1]))
+                    # move_list.append(m[0])    # Add the move to the list.
+                    # move_score.append(get_pip_count(m[1].pointLists, player))
+                    # move_state.append(m[1])
             except StopIteration as e:
                 done_finding_moves = True
         if not any_non_pass_moves:
-            move_list.append('p')
-        return move_list, move_score
+            # move_list.append('p')
+            node.descendants.append('p')
+        #return move_list, move_score, move_state
 
     def move_randomly(self, player):
         moves, scores = self.get_all_moves(player)
@@ -105,3 +120,11 @@ class BackgammonPlayer:
 def get_pip_count(board_state, player):
     a=[(len(e)*(len(board_state)-i)) for i, e in enumerate(board_state) if player in e]
     return sum(a)
+
+
+class Node:
+    def __init__(self, move = None, score = None, state = None):
+        self.move = move
+        self.score = score
+        self.state = state
+        self.descendants = []
