@@ -7,6 +7,9 @@ KELLY = 'ployknp'
 
 from game_engine import genmoves
 
+W = 0
+R = 1
+
 class BackgammonPlayer:
     def __init__(self):
         self.GenMoveInstance = genmoves.GenMoves()
@@ -59,3 +62,6 @@ class BackgammonPlayer:
     def staticEval(self, state):
         # TODO: return a number for the given state
         return -1
+
+    def get_all_moves(self):
+        pass
