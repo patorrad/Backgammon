@@ -11,10 +11,10 @@ W = 0
 R = 1
 
 class BackgammonPlayer:
-    def __init__(self):
+    def __init__(self, maxply = 2):
         self.GenMoveInstance = genmoves.GenMoves()
         # feel free to create more instance variables as needed.
-        self.maxply = None
+        self.maxply = maxply
         self.static_eval = lambda max_player, min_player: max_player - min_player
         self.start_node = None
 
@@ -55,17 +55,30 @@ class BackgammonPlayer:
     def move(self, state, die1=1, die2=6):
         self.start_node = Node(state=state)
         self.get_next_ply(die1, die2, 1, self.start_node)
-        return self.last_minimax()
+        # return self.last_minimax(self.start_node)
+        self.minimax(self.start_node, 1)
+        self.start_node.move = self.start_node.descendants[self.start_node.get_max()].move
+        return self.start_node.move
 
     def last_minimax(self, node):
-        node.score = self.node.get_max()
-        # for i in range(len(self.start_node.descendants)):
+        # return node.descendants[node.get_max()].move
+        node.move = node.descendants[node.get_max()].move
 
+    def minimax(self, node, ply):
+        if ply >= self.maxply:
+            ply += 1
+            self.last_minimax(node)
+        else: 
+            ply += 1
+            for i in range(len(node.descendants)):
+                self.minimax(node.descendants[i], ply)
+            node.move = node.descendants[node.get_max()].move
 
     # Hint: Look at game_engine/boardState.py for a board state properties you can use.
     def staticEval(self, state):
         # TODO: return a number for the given state
-        return self.static_eval(get_pip_count(state, state.whose_turn), get_pip_count(state, int(not bool(state.whose_turn))))
+        print('static',self.static_eval(get_pip_count(state.pointLists, state.whose_move), get_pip_count(state.pointLists, int(not bool(state.whose_move)))))
+        return self.static_eval(get_pip_count(state.pointLists, state.whose_move), get_pip_count(state.pointLists, int(not bool(state.whose_move))))
 
     def initialize_move_gen_for_state(self, state, who, die1, die2):
         self.move_generator = self.GenMoveInstance.gen_moves(state, who, die1, die2)
@@ -79,6 +92,7 @@ class BackgammonPlayer:
                 m = next(self.move_generator)    # Gets a (move, state) pair.
                 if m[0] != 'p':
                     any_non_pass_moves = True
+                    print(m[1].pretty_print())
                     node.descendants.append(Node(m[0], self.staticEval(m[1]), m[1]))
             except StopIteration as e:
                 done_finding_moves = True
@@ -90,7 +104,7 @@ class BackgammonPlayer:
         return self.get_all_moves(node.state.whose_move, node)
 
     def get_next_ply(self, die1, die2, ply, node):
-        if ply >= self.maxPly:
+        if ply >= self.maxply:
             ply += 1
             return self.get_last_ply(die1, die2, node)
         else:
@@ -101,7 +115,11 @@ class BackgammonPlayer:
                 self.get_next_ply(die1, die2, ply, node.descendants[i])
 
 def get_pip_count(board_state, player):
-    a=[(len(e)*(len(board_state)-i)) for i, e in enumerate(board_state) if player in e]
+    if player == W:
+        a=[(len(e)*(len(board_state)-i)) for i, e in enumerate(board_state) if player in e]
+    else:
+        a=[(len(e)*(i+1)) for i, e in enumerate(board_state) if player in e]
+    print('pip count', sum(a), 'for', player)
     return sum(a)
 
 class Node:
@@ -115,12 +133,18 @@ class Node:
         max = 0
         index = 0
         for i in range(len(self.descendants)):
-            if self.descendants[i].score > max: index = i
+            if self.descendants[i].score > max: 
+                index = i
+                max = self.descendants[i].score
+        self.score = max
         return i
 
     def get_min(self):
-        max = 0
+        min = 0
         index = 0
         for i in range(len(self.descendants)):
-            if self.descendants[i].score < max: index = i
+            if self.descendants[i].score < min: 
+                index = i
+                min = self.descendants[i].score
+        self.score = min
         return i
